@@ -1,6 +1,7 @@
-import { createServer, type IncomingMessage, type Server } from 'node:http'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { DatabaseSync } from 'node:sqlite'
 
+import { corsOrigin } from './config.ts'
 import { readJson, sendError, sendJson } from './http.ts'
 import { ApiError } from './errors.ts'
 import {
@@ -36,12 +37,38 @@ function authenticate(request: IncomingMessage): string | null {
   return request.headers['x-caller']?.toString() ?? null
 }
 
+/**
+ * CORS: UI живёт на другом порту, браузер без этих заголовков запрос не
+ * отпустит. Источник берётся из CORS_ORIGIN, по умолчанию разрешены все — на
+ * этой стадии Executor и так без аутентификации, ограничивать нечего. Когда
+ * появится 7.2, сюда же придёт список допустимых источников.
+ *
+ * Ambient-учётных данных нет (ни cookie, ни basic), поэтому `*` не открывает
+ * доступ ничему, что и так не было бы открыто.
+ */
+function cors(response: ServerResponse): void {
+  response.setHeader('access-control-allow-origin', corsOrigin)
+  response.setHeader('access-control-allow-methods', 'GET, POST, PATCH, OPTIONS')
+  response.setHeader('access-control-allow-headers', 'content-type, authorization, x-caller')
+  response.setHeader('access-control-max-age', '600')
+}
+
 export function createApp(db: DatabaseSync): Server {
   return createServer(async (request, response) => {
     try {
+      cors(response)
+
       const url = new URL(request.url ?? '/', 'http://localhost')
       const path = url.pathname.replace(/\/+$/, '') || '/'
       const method = request.method ?? 'GET'
+
+      // Preflight: браузер шлёт его перед PATCH с JSON-телом.
+      if (method === 'OPTIONS') {
+        response.writeHead(204)
+        response.end()
+        return
+      }
+
       const caller = authenticate(request)
 
       const result = await route(db, method, path, request, caller)

@@ -20,3 +20,5 @@ node_modules/
 # Локальная база
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm

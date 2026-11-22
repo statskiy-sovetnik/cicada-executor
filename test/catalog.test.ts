@@ -130,3 +130,35 @@ describe('каталог записей', () => {
     assert.equal(missing.body.error.code, 'validation_failed')
   })
 })
+
+describe('CORS', () => {
+  let h: Harness
+  before(async () => {
+    h = await start()
+  })
+  after(async () => h.close())
+
+  it('отвечает на preflight без тела', async () => {
+    const response = await fetch(`${h.url}/action/some-id/signature`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'http://localhost:5174',
+        'access-control-request-method': 'PATCH',
+        'access-control-request-headers': 'content-type',
+      },
+    })
+    assert.equal(response.status, 204)
+    assert.equal(response.headers.get('access-control-allow-origin'), '*')
+    assert.match(response.headers.get('access-control-allow-methods') ?? '', /PATCH/)
+    assert.match(response.headers.get('access-control-allow-headers') ?? '', /content-type/)
+  })
+
+  it('отдаёт заголовок и на обычном ответе, и на отказе', async () => {
+    const ok = await fetch(`${h.url}/actions`)
+    assert.equal(ok.headers.get('access-control-allow-origin'), '*')
+
+    const missing = await fetch(`${h.url}/action/nope`)
+    assert.equal(missing.status, 404)
+    assert.equal(missing.headers.get('access-control-allow-origin'), '*')
+  })
+})

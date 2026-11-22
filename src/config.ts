@@ -69,5 +69,11 @@ export function operatorKey(): Hex {
   return (raw.startsWith('0x') ? raw : `0x${raw}`) as Hex
 }
 
+/**
+ * Источник, которому разрешены запросы из браузера. По умолчанию все: на этой
+ * стадии аутентификации нет, ограничивать нечего. См. 7.2.
+ */
+export const corsOrigin = optional('CORS_ORIGIN', '*')
+
 export const port = Number(optional('PORT', '8787'))
 export const dbPath = optional('DB_PATH', './executor.sqlite')
