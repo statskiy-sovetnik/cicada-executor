@@ -6,7 +6,8 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --no-warnings=ExperimentalWarning --import tsx --test test/*.test.ts"
+    "test": "node --no-warnings=ExperimentalWarning --import tsx --test test/*.test.ts",
+    "derive-key": "tsx scripts/deriveOperatorKey.ts"
   },
   "dependencies": {
     "@metamask/smart-accounts-kit": "^2.0.0",
