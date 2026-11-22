@@ -1,0 +1,22 @@
+{
+  "name": "cicada-executor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --no-warnings=ExperimentalWarning --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@metamask/smart-accounts-kit": "^2.0.0",
+    "viem": "^2.58.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "dotenv": "^18.0.10",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

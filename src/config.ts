@@ -1,0 +1,73 @@
+import 'dotenv/config'
+import { base, mainnet } from 'viem/chains'
+import type { Address, Chain, Hex } from 'viem'
+
+/**
+ * Конфигурация Executor.
+ *
+ * Адреса контрактов и тела URL живут здесь, а не в окружении: это часть
+ * конфигурации развёртывания, а не секреты. В окружении остаются ключ
+ * провайдера, ключ оператора и параметры запуска.
+ */
+
+function env(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`переменная окружения ${name} не задана`)
+  return value
+}
+
+function optional(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback
+}
+
+/** Ключ Alchemy один на все сети, различаются только поддомены. */
+const alchemy = (subdomain: string) =>
+  `https://${subdomain}.g.alchemy.com/v2/${env('ALCHEMY_API_KEY')}`
+
+export type NetworkConfig = {
+  chain: Chain
+  /** Геттер, а не значение: каталог читается без ключа провайдера, и его
+   *  отсутствие не должно мешать этому. Ключ требуется только на исполнении. */
+  readonly rpcUrl: string
+  /** Делегат всех записей каталога; через него уходит redeemDelegations. */
+  redeemRelayer: Address
+}
+
+/**
+ * Поддержанные сети (2.4 спецификации). Запись исполнима, только если её
+ * chainId есть здесь: это проверяется на валидации POST /execute.
+ */
+export const networks: Record<number, NetworkConfig> = {
+  [mainnet.id]: {
+    chain: mainnet,
+    get rpcUrl() {
+      return alchemy('eth-mainnet')
+    },
+    redeemRelayer: '0x0000000000000000000000000000000000000000',
+  },
+  [base.id]: {
+    chain: base,
+    get rpcUrl() {
+      return alchemy('base-mainnet')
+    },
+    redeemRelayer: '0x0000000000000000000000000000000000000000',
+  },
+}
+
+export function networkFor(chainId: number): NetworkConfig | undefined {
+  return networks[chainId]
+}
+
+export const supportedChainIds = Object.keys(networks).map(Number)
+
+/**
+ * Ключ оператора. Геттер, а не значение: каталог читается и заводится без него,
+ * и отсутствие ключа не должно мешать этому. Требуется только на исполнении.
+ */
+export function operatorKey(): Hex {
+  const raw = env('OPERATOR_PRIVATE_KEY')
+  return (raw.startsWith('0x') ? raw : `0x${raw}`) as Hex
+}
+
+export const port = Number(optional('PORT', '8787'))
+export const dbPath = optional('DB_PATH', './executor.sqlite')
