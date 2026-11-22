@@ -50,7 +50,7 @@ export const networks: Record<number, NetworkConfig> = {
     get rpcUrl() {
       return alchemy('base-mainnet')
     },
-    redeemRelayer: '0x0000000000000000000000000000000000000000',
+    redeemRelayer: '0xCBEB404704A47EC0F34faAE1840B5382B3Af9176',
   },
 }
 
