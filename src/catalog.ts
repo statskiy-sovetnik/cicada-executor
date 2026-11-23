@@ -70,6 +70,42 @@ export function setEnabled(db: DatabaseSync, actionId: string, enabled: boolean)
   return mustGetAction(db, actionId)
 }
 
+/**
+ * Исполнение, которое израсходовало запись (5.7), либо undefined.
+ *
+ * Не денормализуется флагом на `actions`: выводится запросом, чтобы не возникло
+ * двух копий одного факта. Нужно и на горячем пути, и на чтении — иначе
+ * интерфейс не может показать, что запись израсходована.
+ */
+export function spentBy(db: DatabaseSync, actionId: string): SpentRef | undefined {
+  return db
+    .prepare(
+      `SELECT e.id AS executionId, e.tx_hash AS txHash, e.block_number AS blockNumber
+         FROM execution_actions ea JOIN executions e ON e.id = ea.execution_id
+        WHERE ea.action_id = ? AND e.status = 'onchain_executed'
+        LIMIT 1`,
+    )
+    .get(actionId) as SpentRef | undefined
+}
+
+/** Идентификаторы записей, израсходованных исполнением. Один запрос на список. */
+export function spentIds(db: DatabaseSync): Set<string> {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT ea.action_id AS id
+         FROM execution_actions ea JOIN executions e ON e.id = ea.execution_id
+        WHERE e.status = 'onchain_executed'`,
+    )
+    .all() as unknown as { id: string }[]
+  return new Set(rows.map((row) => row.id))
+}
+
+export type SpentRef = {
+  executionId: string
+  txHash: string | null
+  blockNumber: number | null
+}
+
 export const stepsOf = (row: ActionRow): Step[] => JSON.parse(row.steps) as Step[]
 
 /**
@@ -169,7 +205,7 @@ function stepIsSigned(step: Step): boolean {
 }
 
 /** Расшифрованное представление записи вместе с метаданными (5.5). */
-export function decodeAction(row: ActionRow): {
+export function decodeAction(row: ActionRow, spent: SpentRef | undefined): {
   actionId: string
   name: string
   description: string | null
@@ -177,6 +213,8 @@ export function decodeAction(row: ActionRow): {
   enabled: boolean
   status: ActionStatus
   version: number
+  /** Исполнение, израсходовавшее запись, либо null. Повторно она неисполнима (5.7). */
+  spentBy: SpentRef | null
   steps: DecodedStep[]
 } {
   let steps: DecodedStep[]
@@ -197,6 +235,7 @@ export function decodeAction(row: ActionRow): {
     enabled: row.enabled === 1,
     status: row.status,
     version: row.version,
+    spentBy: spent ?? null,
     steps,
   }
 }

@@ -4,7 +4,7 @@ import { BaseError, ContractFunctionRevertedError, encodeFunctionData, type Hex 
 
 import { networkFor, supportedChainIds } from './config.ts'
 import { operatorAccount, publicClientFor, REDEEM_RELAYER_ABI, walletClientFor } from './chain.ts'
-import { mustGetAction, stepsOf } from './catalog.ts'
+import { mustGetAction, spentBy, stepsOf } from './catalog.ts'
 import { now, type ActionRow } from './db.ts'
 import { ApiError } from './errors.ts'
 import type { ExecutionStatus } from './schema.ts'
@@ -112,20 +112,10 @@ function validate(db: DatabaseSync, ids: string[]): ActionRow[] {
   return actions
 }
 
-/**
- * Блокировка по 5.7. Не денормализуется флагом на `actions`: выводится
- * запросом, чтобы не возникло двух копий одного факта.
- */
+/** Блокировка по 5.7: израсходованную запись повторно не исполнить. */
 function blockIfExecuted(db: DatabaseSync, actionId: string): void {
-  const row = db
-    .prepare(
-      `SELECT e.id AS id, e.tx_hash AS tx_hash
-         FROM execution_actions ea JOIN executions e ON e.id = ea.execution_id
-        WHERE ea.action_id = ? AND e.status = 'onchain_executed'
-        LIMIT 1`,
-    )
-    .get(actionId) as { id: string; tx_hash: string | null } | undefined
-  if (row) throw ApiError.alreadyExecuted(actionId, row.id, row.tx_hash)
+  const spent = spentBy(db, actionId)
+  if (spent) throw ApiError.alreadyExecuted(actionId, spent.executionId, spent.txHash)
 }
 
 async function send(

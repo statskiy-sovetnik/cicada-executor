@@ -2,6 +2,8 @@ import type { DatabaseSync } from 'node:sqlite'
 
 import {
   setEnabled,
+  spentBy,
+  spentIds,
   attachSignature,
   createAction,
   decodeAction,
@@ -26,7 +28,8 @@ export async function patchSignature(db: DatabaseSync, actionId: string, raw: un
 }
 
 export function getActionDecoded(db: DatabaseSync, actionId: string) {
-  return { status: 200, body: decodeAction(mustGetAction(db, actionId)) }
+  const row = mustGetAction(db, actionId)
+  return { status: 200, body: decodeAction(row, spentBy(db, row.id)) }
 }
 
 /** Сырой вариант — авторитетный (4.8). */
@@ -42,12 +45,15 @@ export function getActionRaw(db: DatabaseSync, actionId: string) {
       enabled: row.enabled === 1,
       status: row.status,
       version: row.version,
+      spentBy: spentBy(db, row.id) ?? null,
       steps: stepsOf(row),
     },
   }
 }
 
 export function getActions(db: DatabaseSync) {
+  // Один запрос на весь список, а не по запросу на запись.
+  const spent = spentIds(db)
   return {
     status: 200,
     body: {
@@ -58,6 +64,8 @@ export function getActions(db: DatabaseSync) {
         enabled: row.enabled === 1,
         status: row.status,
         version: row.version,
+        /** Израсходована исполнением — повторно неисполнима (5.7). */
+        spent: spent.has(row.id),
         createdAt: row.created_at,
       })),
     },

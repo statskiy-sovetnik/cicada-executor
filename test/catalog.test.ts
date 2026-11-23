@@ -162,3 +162,70 @@ describe('CORS', () => {
     assert.equal(missing.headers.get('access-control-allow-origin'), '*')
   })
 })
+
+describe('признак израсходованной записи', () => {
+  let h: Harness
+  before(async () => {
+    h = await start()
+    await h.call('POST', '/action', draftBody({ actionId: 'spent-one' }))
+    await h.call('PATCH', '/action/spent-one/signature', {
+      signatures: [await signDelegation(buildDelegation())],
+    })
+    await h.call('POST', '/action', draftBody({ actionId: 'untouched' }))
+  })
+  after(async () => h.close())
+
+  it('до исполнения признака нет', async () => {
+    assert.equal((await h.call('GET', '/action/spent-one')).body.spentBy, null)
+    const list = await h.call('GET', '/actions')
+    assert.equal(list.body.actions.every((a: { spent: boolean }) => !a.spent), true)
+  })
+
+  it('после onchain_executed запись помечена во всех трёх ручках', async () => {
+    h.db
+      .prepare(
+        `INSERT INTO executions (id, status, tx_hash, block_number, created_at, updated_at)
+         VALUES ('spent-exec', 'onchain_executed', '0xfeed', 42, '2026-01-01', '2026-01-01')`,
+      )
+      .run()
+    h.db
+      .prepare(
+        `INSERT INTO execution_actions (execution_id, action_id, action_version, position)
+         VALUES ('spent-exec', 'spent-one', 1, 0)`,
+      )
+      .run()
+
+    const decoded = await h.call('GET', '/action/spent-one')
+    assert.deepEqual(decoded.body.spentBy, {
+      executionId: 'spent-exec',
+      txHash: '0xfeed',
+      blockNumber: 42,
+    })
+
+    const raw = await h.call('GET', '/action/spent-one/raw')
+    assert.equal(raw.body.spentBy.executionId, 'spent-exec')
+
+    const list = await h.call('GET', '/actions')
+    const byId = Object.fromEntries(
+      list.body.actions.map((a: { actionId: string; spent: boolean }) => [a.actionId, a.spent]),
+    )
+    assert.equal(byId['spent-one'], true)
+    assert.equal(byId['untouched'], false)
+  })
+
+  it('реверт записи не расходует', async () => {
+    h.db
+      .prepare(
+        `INSERT INTO executions (id, status, created_at, updated_at)
+         VALUES ('reverted-exec', 'onchain_reverted', '2026-01-01', '2026-01-01')`,
+      )
+      .run()
+    h.db
+      .prepare(
+        `INSERT INTO execution_actions (execution_id, action_id, action_version, position)
+         VALUES ('reverted-exec', 'untouched', 1, 0)`,
+      )
+      .run()
+    assert.equal((await h.call('GET', '/action/untouched')).body.spentBy, null)
+  })
+})
