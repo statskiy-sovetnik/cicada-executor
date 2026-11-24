@@ -52,42 +52,6 @@ CREATE INDEX IF NOT EXISTS execution_actions_by_action ON execution_actions (act
 CREATE INDEX IF NOT EXISTS executions_by_status ON executions (status);
 `
 
-export type Step = {
-  permissionContext: string
-  mode: string
-  executionCalldata: string
-}
-
-export type ActionStatus = 'draft' | 'signed'
-
-export type ActionRow = {
-  id: string
-  name: string
-  description: string | null
-  chain_id: number
-  enabled: number
-  status: ActionStatus
-  version: number
-  steps: string
-  created_at: string
-  created_by: string | null
-  updated_at: string
-}
-
-export type ExecutionRow = {
-  id: string
-  caller: string | null
-  status: string
-  status_detail: string | null
-  tx_hash: string | null
-  operator: string | null
-  chain_id: number | null
-  block_number: number | null
-  gas_used: number | null
-  created_at: string
-  updated_at: string
-}
-
 export function openDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path)
   // Журнал в WAL: сканер статусов читает параллельно с обработкой запроса.

@@ -3,7 +3,7 @@ import type { Hex } from 'viem'
 
 import { publicClientFor } from './chain.ts'
 import { setStatus } from './execute.ts'
-import type { ExecutionRow } from './db.ts'
+import type { ExecutionRow } from './types/index.ts'
 
 /**
  * Доведение `pending` до терминального статуса (5.4).

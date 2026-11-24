@@ -2,11 +2,18 @@ import type { DatabaseSync } from 'node:sqlite'
 import { decodeDelegations, encodeDelegations, SIGNABLE_DELEGATION_TYPED_DATA } from '@metamask/smart-accounts-kit/utils'
 import { getAddress, recoverTypedDataAddress, type Hex } from 'viem'
 
-import { now, type ActionRow, type ActionStatus } from './db.ts'
+import { now } from './db.ts'
 import { ApiError } from './errors.ts'
-import { decodeStep, DecodeError, isSigned, type DecodedStep } from './decode.ts'
+import { decodeStep, DecodeError, isSigned } from './decode.ts'
 import { networkFor, supportedChainIds } from './config.ts'
 import type { AttachSignature, CreateAction, Step } from './schema.ts'
+import type {
+  ActionRow,
+  ActionStatus,
+  DecodedAction,
+  DecodedStep,
+  SpentRef,
+} from './types/index.ts'
 
 /** Канонический DelegationManager: один и тот же адрес во всех сетях. */
 const DELEGATION_MANAGER = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3' as const
@@ -98,12 +105,6 @@ export function spentIds(db: DatabaseSync): Set<string> {
     )
     .all() as unknown as { id: string }[]
   return new Set(rows.map((row) => row.id))
-}
-
-export type SpentRef = {
-  executionId: string
-  txHash: string | null
-  blockNumber: number | null
 }
 
 export const stepsOf = (row: ActionRow): Step[] => JSON.parse(row.steps) as Step[]
@@ -205,18 +206,7 @@ function stepIsSigned(step: Step): boolean {
 }
 
 /** Расшифрованное представление записи вместе с метаданными (5.5). */
-export function decodeAction(row: ActionRow, spent: SpentRef | undefined): {
-  actionId: string
-  name: string
-  description: string | null
-  chainId: number
-  enabled: boolean
-  status: ActionStatus
-  version: number
-  /** Исполнение, израсходовавшее запись, либо null. Повторно она неисполнима (5.7). */
-  spentBy: SpentRef | null
-  steps: DecodedStep[]
-} {
+export function decodeAction(row: ActionRow, spent: SpentRef | undefined): DecodedAction {
   let steps: DecodedStep[]
   try {
     steps = stepsOf(row).map((step) => decodeStep(step, row.chain_id))

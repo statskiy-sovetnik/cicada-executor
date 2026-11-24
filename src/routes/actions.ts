@@ -13,27 +13,36 @@ import {
 } from '../catalog.ts'
 import { attachSignatureSchema, createActionSchema, setEnabledSchema } from '../schema.ts'
 import { parseBody } from '../http.ts'
+import type { Result } from '../types/index.ts'
 
-export async function postAction(db: DatabaseSync, raw: unknown, caller: string | null) {
+export async function postAction(
+  db: DatabaseSync,
+  raw: unknown,
+  caller: string | null,
+): Promise<Result> {
   const body = parseBody(createActionSchema, raw)
   const row = createAction(db, body, caller)
   // Ответ плоский, по разделу «Формат» 5.6.
   return { status: 201, body: { actionId: row.id, status: row.status } }
 }
 
-export async function patchSignature(db: DatabaseSync, actionId: string, raw: unknown) {
+export async function patchSignature(
+  db: DatabaseSync,
+  actionId: string,
+  raw: unknown,
+): Promise<Result> {
   const body = parseBody(attachSignatureSchema, raw)
   const row = await attachSignature(db, actionId, body)
   return { status: 200, body: { actionId: row.id, status: row.status } }
 }
 
-export function getActionDecoded(db: DatabaseSync, actionId: string) {
+export function getActionDecoded(db: DatabaseSync, actionId: string): Result {
   const row = mustGetAction(db, actionId)
   return { status: 200, body: decodeAction(row, spentBy(db, row.id)) }
 }
 
 /** Сырой вариант — авторитетный (4.8). */
-export function getActionRaw(db: DatabaseSync, actionId: string) {
+export function getActionRaw(db: DatabaseSync, actionId: string): Result {
   const row = mustGetAction(db, actionId)
   return {
     status: 200,
@@ -51,7 +60,7 @@ export function getActionRaw(db: DatabaseSync, actionId: string) {
   }
 }
 
-export function getActions(db: DatabaseSync) {
+export function getActions(db: DatabaseSync): Result {
   // Один запрос на весь список, а не по запросу на запись.
   const spent = spentIds(db)
   return {
@@ -76,7 +85,11 @@ export function getActions(db: DatabaseSync) {
  * Отзыв записи флагом `enabled` (7.1). Executor перестаёт её исполнять,
  * подписанная делегация при этом остаётся действительной.
  */
-export async function patchEnabled(db: DatabaseSync, actionId: string, raw: unknown) {
+export async function patchEnabled(
+  db: DatabaseSync,
+  actionId: string,
+  raw: unknown,
+): Promise<Result> {
   const body = parseBody(setEnabledSchema, raw)
   const row = setEnabled(db, actionId, body.enabled)
   return { status: 200, body: { actionId: row.id, enabled: row.enabled === 1 } }

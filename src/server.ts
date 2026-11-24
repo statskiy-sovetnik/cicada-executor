@@ -13,6 +13,7 @@ import {
   postAction,
 } from './routes/actions.ts'
 import { getExecution, postExecute } from './routes/executions.ts'
+import type { Result } from './types/index.ts'
 
 /**
  * Поверхность API — 5.1 и 5.5 спецификации:
@@ -80,8 +81,6 @@ export function createApp(db: DatabaseSync): Server {
   })
 }
 
-type Result = { status: number; body: unknown }
-
 async function route(
   db: DatabaseSync,
   method: string,
@@ -109,7 +108,7 @@ async function route(
   if (method === 'GET' && execution) {
     return getExecution(db, decodeURIComponent(execution[1]))
   }
-
+  
   const signature = /^\/action\/([^/]+)\/signature$/.exec(path)
   if (method === 'PATCH' && signature) {
     return patchSignature(db, decodeURIComponent(signature[1]), await readJson(request))

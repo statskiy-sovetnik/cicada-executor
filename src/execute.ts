@@ -5,9 +5,10 @@ import { BaseError, ContractFunctionRevertedError, encodeFunctionData, type Hex 
 import { networkFor, supportedChainIds } from './config.ts'
 import { operatorAccount, publicClientFor, REDEEM_RELAYER_ABI, walletClientFor } from './chain.ts'
 import { mustGetAction, spentBy, stepsOf } from './catalog.ts'
-import { now, type ActionRow } from './db.ts'
+import { now } from './db.ts'
 import { ApiError } from './errors.ts'
 import type { ExecutionStatus } from './schema.ts'
+import type { ActionRow, ExecuteResult } from './types/index.ts'
 
 /**
  * Конвейер исполнения, 5.2.
@@ -19,12 +20,6 @@ import type { ExecutionStatus } from './schema.ts'
  * Каждый вызов оставляет ряд в `executions`, включая отказавшие: статус
  * записывает, на какой стадии остановились.
  */
-
-export type ExecuteResult = {
-  executionId: string
-  txHash: Hex
-  status: 'pending'
-}
 
 /**
  * На стадии 1 оператор один и вызовы обрабатываются последовательно (5.3).

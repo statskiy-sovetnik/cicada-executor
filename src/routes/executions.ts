@@ -4,9 +4,13 @@ import { enqueue, execute } from '../execute.ts'
 import { executeSchema } from '../schema.ts'
 import { parseBody } from '../http.ts'
 import { ApiError } from '../errors.ts'
-import type { ExecutionRow } from '../db.ts'
+import type { ExecutionActionRow, ExecutionRow, Result } from '../types/index.ts'
 
-export async function postExecute(db: DatabaseSync, raw: unknown, caller: string | null) {
+export async function postExecute(
+  db: DatabaseSync,
+  raw: unknown,
+  caller: string | null,
+): Promise<Result> {
   const body = parseBody(executeSchema, raw)
   // Последовательно: один оператор, конкурентных отправок не бывает (5.3).
   const result = await enqueue(() => execute(db, body.ids, caller))
@@ -14,7 +18,7 @@ export async function postExecute(db: DatabaseSync, raw: unknown, caller: string
   return { status: 202, body: result }
 }
 
-export function getExecution(db: DatabaseSync, executionId: string) {
+export function getExecution(db: DatabaseSync, executionId: string): Result {
   const row = db.prepare('SELECT * FROM executions WHERE id = ?').get(executionId) as
     | ExecutionRow
     | undefined
@@ -24,7 +28,7 @@ export function getExecution(db: DatabaseSync, executionId: string) {
     .prepare(
       'SELECT action_id, action_version, position FROM execution_actions WHERE execution_id = ? ORDER BY position',
     )
-    .all(executionId) as unknown as { action_id: string; action_version: number; position: number }[]
+    .all(executionId) as unknown as ExecutionActionRow[]
 
   return {
     status: 200,

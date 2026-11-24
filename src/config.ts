@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import { base, mainnet } from 'viem/chains'
-import type { Address, Chain, Hex } from 'viem'
+import type { Hex } from 'viem'
+
+import type { NetworkConfig } from './types/index.ts'
 
 /**
  * Конфигурация Executor.
@@ -23,15 +25,6 @@ function optional(name: string, fallback: string): string {
 /** Ключ Alchemy один на все сети, различаются только поддомены. */
 const alchemy = (subdomain: string) =>
   `https://${subdomain}.g.alchemy.com/v2/${env('ALCHEMY_API_KEY')}`
-
-export type NetworkConfig = {
-  chain: Chain
-  /** Геттер, а не значение: каталог читается без ключа провайдера, и его
-   *  отсутствие не должно мешать этому. Ключ требуется только на исполнении. */
-  readonly rpcUrl: string
-  /** Делегат всех записей каталога; через него уходит redeemDelegations. */
-  redeemRelayer: Address
-}
 
 /**
  * Поддержанные сети (2.4 спецификации). Запись исполнима, только если её

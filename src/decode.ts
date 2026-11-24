@@ -3,6 +3,7 @@ import { decodeDelegations } from '@metamask/smart-accounts-kit/utils'
 import { getAddress, size, slice, type Hex } from 'viem'
 
 import type { Step } from './schema.ts'
+import type { DecodedStep } from './types/index.ts'
 
 /**
  * Расшифровка записи для человека (4.8, 5.5).
@@ -32,29 +33,6 @@ function enforcerNames(chainId: number): Map<string, string> {
     registries.set(chainId, registry)
   }
   return registry
-}
-
-export type DecodedCaveat = {
-  enforcer: Hex
-  name: string
-  terms: Hex
-  args: Hex
-}
-
-export type DecodedDelegation = {
-  delegate: Hex
-  delegator: Hex
-  authority: Hex
-  salt: string
-  signed: boolean
-  caveats: DecodedCaveat[]
-}
-
-export type DecodedStep = {
-  mode: Hex
-  /** Цепочка передоверия: leaf → root. На стадии 1 всегда из одного элемента. */
-  delegations: DecodedDelegation[]
-  execution: { target: Hex; value: string; callData: Hex }
 }
 
 export class DecodeError extends Error {}
