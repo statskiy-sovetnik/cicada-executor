@@ -1,0 +1,17 @@
+# Всё, что не нужно сборке. Секреты и база — отдельно: .env приходит в
+# контейнер окружением, база живёт в томе.
+.git
+.gitignore
+node_modules
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.env
+.env.*
+!.env.example
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+CLAUDE.md
+*.log
